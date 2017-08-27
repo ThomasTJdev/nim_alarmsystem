@@ -1,0 +1,125 @@
+/*
+    Body
+__________________________*/
+body {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  background: #171921;
+  color: white;
+  cursor: none!important;
+}
+main {
+  margin-top: 80px;
+}
+
+/*
+    Nav bar
+__________________________*/
+.navbar {
+  background: #171921; /* Blue darkish*/
+  border-color: #123D6D;
+}
+.navbar .navbar-text {
+  color: white;
+}
+.navbar>.container {
+  width: 100%;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.navbar .navbar-btn {
+  width: 100px;
+}
+.navbar .navbar-navigation {
+  color: white;
+  padding-top: 2px;
+  font-family: 'Montserrat Subrayada', sans-serif;
+  font-size: 16px;
+  margin-left: 5px;
+  width: 90px;
+  cursor: pointer;
+}
+
+
+/*
+    Codepanel
+__________________________*/
+
+.codepanel-row {
+  padding-top: 5px;
+}
+
+.btn-disarm-div {
+  width: 100%;
+  text-align: center;
+  margin-top: 15px;
+}
+.btn-disarm {
+  width: 60%;
+}
+.btn-clear {
+  width: 30%;
+}
+
+.password-message {
+  display: none;
+  text-align: center;
+  padding-top: 5px;
+  color: red;
+}
+
+.btn-disarm-manual {
+  padding: 2px 12px;
+  margin-bottom: 4px;
+  margin-left: 10px;
+}
+
+.codebtn {
+  width: 80px;
+  padding: 20px;
+  margin-right: 15px;
+  margin-bottom: 15px;
+}
+
+
+
+/*
+    Users
+__________________________*/
+.newuserForm {
+  margin-left: 25px;  
+}
+.newuserForm input {
+  color: black;
+}
+.newuserForm label {
+  width: 200px;
+}
+
+.panel-users {
+  width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+
+
+/*
+    Camera
+__________________________*/
+#cameraFrame {
+  width: 100%;
+  height: 420px;
+}
+#cameraFrame body::-webkit-scrollbar {
+    width: 5px;
+}
+#cameraFrame body::-webkit-scrollbar-track {
+    -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+}
+#cameraFrame body::-webkit-scrollbar-thumb {
+  background-color: darkgrey;
+  outline: 1px solid slategrey;
+}

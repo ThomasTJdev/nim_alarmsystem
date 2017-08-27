@@ -1,0 +1,232 @@
+#? stdtmpl | standard
+#proc genNavbar(): string=
+# result = ""
+
+<nav class="navbar navbar-default navbar-fixed-top">
+  <div class="container">
+    <p class="navbar-text" style="font-size: 110%;"><b>${alarmStatus()}</b></p>
+    <span style="text-align: center; float: right;">
+      <a class="navbar-text navbar-navigation" href="/">Log</a>
+      <a class="navbar-text navbar-navigation" href="/arm">Arm</a>
+      <a class="navbar-text navbar-navigation" href="/disarmManual">Disarm</a>
+      <a class="navbar-text navbar-navigation" href="/camera">Camera</a>
+      <a class="navbar-text navbar-navigation" href="/users">User</a>
+    </span>
+  </div>
+</nav>
+
+#end proc
+#
+#
+#proc genWelcome(): string = 
+# result = "" 
+
+<div class="panel panel-default" style="margin: 20px 20px;">
+  <!-- Default panel contents -->
+  <div class="panel-heading">Latest activity</div>
+
+  <!-- Table -->
+  <table class="table">
+    <!--<thead>
+      <tr>
+        <td>ID</td>
+        <td>Name</td>
+        <td>Station</td>
+        <td>Type</td>
+        <td>Location</td>
+        <td>Description</td>
+        <td>Changed</td>
+        <td>Created</td>
+      </tr>
+    </thead>-->
+    <tbody id="tablebody" style="color: black">
+      #let history = getAllRows(db, sqlSelect("history", ["id", "text", "date", "time", "type"], [""], [""], "", "", "ORDER BY id DESC LIMIT 500"))
+      #for item in history:
+        #if item[1] == "Alarm is ringing" or item[1] == "Wrong password" or item[1] == "No password entered":
+        <tr style="background: #ed9191;">
+        #elif item[4] == "password" :
+        <tr style="background: #91ebbc;">
+        #elif item[1] == "Alarm is triggered":
+        <tr style="background: #e4e086;">
+        #else:
+        <tr>
+        #end if
+          <td>${item[0]}</td>
+          <td>${item[1]}</td>
+          <td>${item[2]}</td>
+          <td>${item[3]}</td>
+        </tr>
+      #end for
+    </tbody>
+  </table>
+</div>
+
+#end proc
+#
+#
+#proc genArm(): string = 
+# result = ""
+  <div style="font-size: 12px; text-align: center;">
+    This will arm the system.
+    <br>
+    After enabling the alarm, you will have 30 seconds before the alarm is armed.
+    <br>
+    The system will notify you with beeps until the system is armed.
+    <br>
+  </div>
+  <hr>
+  <a href="/armed" class="btn btn-danger" style="width: 100%; margin-bottom 20px; text-align: center; font-size: 100px;">
+  ARM SYSTEM
+  </a>
+#end proc
+#
+#
+#proc genCamera(): string = 
+# result = ""
+  <style>
+  body {
+    overflow: hidden;
+  }
+  main {
+    margin-top: 55px!important;
+   }
+  </style>
+  <iframe id="cameraFrame" src="http://$cfgSlaveServer1:$cfgSlaveCamera1" frameborder="0" allowfullscreen></iframe>
+#end proc
+#
+#
+#proc genArmed(ringing, triggered: bool, manualDisarm: string): string = 
+# result = ""
+  #if ringing:
+  <div class="alarm-ringing" data-active="true" style="width: 100%; margin-bottom 20px; text-align: center; font-size: 30px; color: red;">
+    ALARM ACTIVATED
+  </div>
+  #else:
+  <div class="alarm-ringing" data-active="false" style="width: 100%; margin-bottom 20px; text-align: center; font-size: 30px;">
+    THE SYSTEM IS ARMED
+    <a href="/disarmManual" class="btn btn-default btn-disarm-manual"><i class="fa fa-angle-double-right" aria-hidden="true"></i> Disarm</a>
+  </div>
+  #end if
+  #if triggered:
+    <div id='alarm-status' data-triggered='true' style='display: none;'></div>
+  #end if
+  <hr>
+  $manualDisarm
+#end proc
+#
+#
+#proc genDisarm(): string =
+# result = ""
+  <div style="text-align: center;">
+    <div style="display: inline-block; vertical-align: top; padding-top: 5px; margin-right: 15px;">
+      <input id="disarm-password" type="password" class="form-control" style="text-align: center"/>
+      <div class="btn-disarm-div">
+        <a class="btn btn-default btn-disarm">Disarm</a>
+        <a class="btn btn-default btn-clear">Clear</a>
+      </div>
+      <div class="password-message">
+        
+      </div>
+    </div>
+
+    <div style="display: inline-block">
+      <div class="codepanel-row">
+        <a class="btn btn-default codebtn" data-value="1">1</a>
+        <a class="btn btn-default codebtn" data-value="2">2</a>
+        <a class="btn btn-default codebtn" data-value="3">3</a>
+      </div>
+      <div class="codepanel-row">
+        <a class="btn btn-default codebtn" data-value="4">4</a>
+        <a class="btn btn-default codebtn" data-value="5">5</a>
+        <a class="btn btn-default codebtn" data-value="6">6</a>
+      </div>
+      <div class="codepanel-row">
+        <a class="btn btn-default codebtn" data-value="7">7</a>
+        <a class="btn btn-default codebtn" data-value="8">8</a>
+        <a class="btn btn-default codebtn" data-value="9">9</a>
+      </div>
+    </div>
+  </div>
+#end proc
+#
+#
+#proc genUser(wrong: bool): string =
+# result = ""
+  <form action="/newuserAdd" class="newuserForm">
+    <div style="width: 500px;">
+      <h3>Add new user</h3>
+      #if wrong:
+      <div style="color: red">
+        Wrong admin password.
+      </div>
+      <br><br>
+      #end if
+      <label>Admin password:</label>
+      <input type="password" id="adminpassword" name="adminpassword"/>
+      <br>
+      <label>New users name:</label>
+      <input type="text" id="newusername" name="newusername"/>
+      <br>
+      <label>New users password:</label>
+      <input type="password" id="newpassword" name="newpassword"/>
+
+      <br>
+      <input type="submit" class="btn btn-default" value="Submit">
+    </div>
+  </form>
+  <hr>
+  #let allUsers = getAllRows(db, sqlSelect("person", ["id", "name"], [""], [""], "", "", ""))
+  <div class="panel panel-default panel-users">
+    <div class="panel-heading">Users</div>
+      <table class="table">
+        <tbody id="tablebody" style="color: black">
+          #for user in allUsers:
+            <tr>
+              <td>${user[1]}</td>
+              #let userLastlogin = getAllRows(db, sqlSelect("history", ["date", "time"], [""], ["user_id = "], "", "", "ORDER BY id DESC LIMIT 1"), user[0])
+              #for dt in userLastlogin:
+                <td style="text-align: right;">Last login: ${dt[0]} ${dt[1]}</td>
+              #end if
+              <td>
+                <a href="/userdelete?id=${user[0]}" style="cursor: pointer; color: red"><i class="fa fa-trash-o" aria-hidden="true"></i></a>
+              </td>
+            </tr>
+          #end for
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+#end proc
+#
+#
+#proc genMain(content: string): string = 
+# result = "" 
+# var title = "Alarm system" 
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>$title</title>
+  <!-- Loading fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto|Roboto+Condensed|PT+Sans+Narrow|Marck+Script|Abel|Open+Sans+Condensed|Assistant|Montserrat+Subrayada" rel="stylesheet">
+  <!-- Font Awesome - SIL Open Font License (OFL) -->
+  <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <!-- JQUERY -->
+  <script src="https://code.jquery.com/jquery-3.1.1.min.js" defer></script>
+  <!-- BOOTSTRAP -->
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" defer></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <!-- CUSTOM -->
+  <link rel="stylesheet" href="/css/style.css?v=$cfgPackageVersion">
+  <script src="/js/js.js?v=$cfgPackageVersion" defer></script>
+  <!--Let browser know website is optimized for mobile-->
+  <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body>
+  <header>${genNavbar()}</header>
+  <main>$content</main>
+  <footer></footer>
+</body>
+
+#end proc
