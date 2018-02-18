@@ -61,6 +61,7 @@ Raspberry Pi:
 - Testet on Raspberry Pi 3
 - Raspbian Jessie 2017-07-05, kernel 4.9
 - WiFi connection
+- USB webcam
 
 The controller (the pins is specified in the config):
 - Touchscreen (style.css uses 720x480)
@@ -141,6 +142,14 @@ curl https://getcaddy.com | bash
 sudo caddy -conf ressouces/Caddyfile
 ```
 
+### USB webcam
+E.g. PS EYE webcam.
+
+Run
+`arecord -l` and get the name. Change the alsa name in `startcamera.sh`.
+
+### Dashboard
+To activated the twitter list view, go to https://dev.twitter.com/web/embedded-timelines and get your link. Insert them in `main.tmpl`.
 
 # How to run it
 
@@ -150,8 +159,11 @@ sudo caddy -conf ressouces/Caddyfile
 2) Open and adjust config-default.cfg and rename it to config.cfg (`nano config-default.cfg` & `mv config-default.cfg config.cfg`)
 3) Run `nim c -r compile.nim` to generate the sqlite database
 4) Run `nim c -d:ssl -d:release main.nim`
-5) Optional: Open and adjust the Caddyfile with the controllers LAN IP (`nano ressources/Caddyfile`)
-6) Run `./main` or `sudo ./main`
+5) To enable slack, compile with `-d:slackOn`
+6) To enable email notifications, compile with `-d:email`
+Access interface over lan:
+7) Optional: Open and adjust the Caddyfile with the controllers LAN IP (`nano ressources/Caddyfile`)
+8) Run `./main` or `sudo ./main`
 
 ## The slave
 
