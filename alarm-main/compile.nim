@@ -32,6 +32,15 @@ create table if not exists history(
 );""", []):
   echo "history table already exists"
 
+
+if not db.tryExec(sql"""
+create table if not exists system(
+  id INTEGER primary key,
+  startdate BIGINT,
+  alarmstatus VARCHAR(100)
+);""", []):
+  echo "system table already exists"
+
 echo "Creating admin user"
 let iName = readLineFromStdin "Input admin name: "
 let iPwd = readLineFromStdin "Input admin password - only numbers (will be saltet and hashed): "
