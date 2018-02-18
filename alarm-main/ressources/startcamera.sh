@@ -1,0 +1,1 @@
+avconv -t 1000 -f video4linux2 -r 25 -s 640x320 -i /dev/video0 -f alsa -i plughw:CameraB409241,0 -ar 22050 -ab 64k -strict experimental -acodec aac -vcodec mpeg4 -y /home/pi/Documents/rpi/alarm-main/files/$1

@@ -10,10 +10,13 @@
 ]#
 
 import
-  os, strutils, times, jester, asyncdispatch, asyncnet, parsecfg, macros, osproc, db_sqlite, ressources.sqlQuery, ressources.newUser, json, httpclient, cgi, slacklib, wiringPiNim
+  os, strutils, times, jester, asyncdispatch, asyncnet, parsecfg, macros, osproc, db_sqlite, ressources.sqlQuery, ressources.newUser, json, httpclient, cgi, slacklib, wiringPiNim,
+  htmlparser, smtp
 
-when not defined(windows):
-  import bcrypt # Waiting for dom96 ;-)
+import bcrypt
+
+# System
+let appDir = getAppDir()
 
 # Database
 var db: DbConn
@@ -34,11 +37,17 @@ let
   cfgHostPort = parseInt dict.getSectionValue("Socket","HostPort")
   cfgSlaveServer1 = dict.getSectionValue("Socket","SlaveServer1")
 
+# Main camera
+var
+  mainCameraFilename = "none"
+  mainCameraProcess: Process
+
+
 # Slave camera
 let cfgSlaveCamera1 = dict.getSectionValue("Slave1","CameraPort")
 
 # Slack
-let cfgSlackOn = parseBool dict.getSectionValue("Slack","SlackOn")
+let slackOn = parseBool dict.getSectionValue("Slack","SlackOn")
 
 # Jester setting server settings
 let cfgWebserverPort = parseInt dict.getSectionValue("Webserver","WebserverPort")
@@ -96,6 +105,36 @@ let
   msgSlave1Quit = slackMsg(slackChannel, slackName, "SLAVE1 is quitting", "", "danger", "Alarm Update", "SLAVE1 is quitting")
   msgSlave1On = slackMsg(slackChannel, slackName, "SLAVE1 is on", "", "good", "Alarm Update", "SLAVE1 is on")
 
+# Email
+
+let smtpAddress = dict.getSectionValue("SMTP","SMTPAddress")
+let smtpPort = dict.getSectionValue("SMTP","SMTPPort")
+let smtpFrom  = dict.getSectionValue("SMTP","SMTPFrom")
+let smtpUser  = dict.getSectionValue("SMTP","SMTPUser")
+let smtpPassword = dict.getSectionValue("SMTP","SMTPPassword")
+
+proc sendMailNow*(subject, message: string) {.async.} =
+  ## Send the email through smtp
+  const otherHeaders = @[("Content-Type", "text/html; charset=\"UTF-8\"")]  
+
+  var client = newAsyncSmtp()
+  await client.connect(smtpAddress, Port(parseInt(smtpPort)))
+
+  await client.auth(smtpFrom, smtpPassword)
+
+  let toList = @[smtpUser]
+
+  var headers = otherHeaders
+  headers.add(("From", smtpFrom))
+
+  let encoded = createMessage(subject, message, toList, @[], headers)
+  
+  try:
+    await client.sendMail(smtpFrom, toList, $encoded)
+  
+  except:
+    echo "Error in sending mail: " & smtpUser
+
 
 # General procs
 proc currDate(): string =
@@ -116,6 +155,20 @@ proc alarmStatus(): string =
   else:
     result = "Disarmed"
 
+# Main camera
+proc cameraStart() =
+  mainCameraFilename = $toInt(epochTime())
+  mainCameraProcess = startProcess("/bin/sh", workingDir = "", ["ressources/startcamera.sh", mainCameraFilename & ".mp4"])
+  #discard execProcess("avconv -t 45 -f video4linux2 -r 25 -s 640x320 -i /dev/video0 -f alsa -i plughw:CameraB409241,0 -ar 22050 -ab 64k -strict experimental -acodec aac -vcodec mpeg4 -y " & appDir & "/files/" & mainCameraFilename & "_maincamera.mp4")
+
+proc cameraStop() =
+  kill(mainCameraProcess)
+  discard execCmd("pkill avconv")
+
+proc cameraStopDelete() =
+  kill(mainCameraProcess)
+  discard execCmd("pkill avconv")
+  discard execCmd("rm " & appDir & "/files/" & mainCameraFilename & ".mp4")
 
 # GPIO functions
 proc gpioSetup() =
@@ -146,7 +199,8 @@ proc gpioPIRMonitor() {.async.} =
       inc(countPIR)
       await sleepAsync(1000)
       if piDigitalRead(gpioPIR) == 1:
-        asyncCheck slackSend(msgTriggeredPir)
+        when declared(slackOn):
+          asyncCheck slackSend(msgTriggeredPir)
         discard tryInsertID(db, sqlInsert("history", ["type", "text", "date", "time"]), "gpio", "PIR is triggered", currDate(), currTime())
         #vAlarmTriggered = true
       else:
@@ -180,7 +234,13 @@ proc alarmRinging() {.async.} =
   ## Activated the ringing when the alarm has been triggered,
   ## and no correct password has been entered
 
-  if cfgSlackOn:
+  # Empty out camera file so file not getting deleted
+  mainCameraFilename = "none"
+
+  #when declared(email):
+  asyncCheck sendMailNow("ALARM IS RINGING", "Alarm has been triggered and is ringing - " & currDate() & " " & currTime())
+
+  when declared(slackOn):
     asyncCheck slackSend(msgRinging)
 
   discard tryInsertID(db, sqlInsert("history", ["type", "text", "date", "time"]), "state", "Alarm is ringing", currDate(), currTime())
@@ -204,6 +264,10 @@ proc alarmTriggered() {.async.} =
   ## is provided, alarmRinging() will be called.
 
   if vAlarmArmed == true and vAlarmRinging == false and vAlarmPwdPeriod == false:
+
+    # Start recording
+    cameraStart()
+
     vAlarmRinging = false
     vAlarmTriggered = true
 
@@ -241,9 +305,12 @@ proc alarmDisarm(userID: string) =
 
   piDigitalWrite(gpioLEDGreen, gpioOn)
 
+  # Delete recording, no use when correct password
+  cameraStopDelete()
+
   let userName = getValue(db, sqlSelect("person", ["name"], [""], ["id ="], "", "", ""), userID)
   
-  if cfgSlackOn:
+  when declared(slackOn):
     asyncCheck slackSend(msgDisarmed)
 
     asyncCheck slackSend(slackMsg(slackChannel, slackName, "Alarm: Corret password", "", "good", "Alarm Update", "Corret password entered by " & userName & " at " & format(getLocalTime(getTime()), "dd MMMM yyyy - HH:mm")))
@@ -265,7 +332,7 @@ proc alarmArmed() {.async.} =
     bLedBlink = true
     asyncCheck gpioLedBlink(gpioLedBlue)
 
-    if cfgSlackOn:
+    when declared(slackOn):
       asyncCheck slackSend(msgArmed)
 
     discard tryInsertID(db, sqlInsert("history", ["type", "text", "date", "time"]), "state", "Alarm is armed", currDate(), currTime())
@@ -306,11 +373,25 @@ proc checkPassword(password: string): string =
 
 
 
+proc setAlarmStatus(currentAlarmStatus: string) =
+  case currentAlarmStatus
+  of "Disarmed":
+    discard
+  of "Ringing":
+    asyncCheck alarmRinging()
+  of "Triggered":
+    asyncCheck alarmRinging()
+  of "Armed":
+    asyncCheck alarmArmed()
+  else:
+    discard
+
 #[
     SLACKLIB
     Connected to your slack
 ]#
-proc serverSlackRun(slackReq: asynchttpserver.Request) {.async.} =
+#when declared(slackOn):
+proc serverSlackRun(slackReq: asynchttpserver.Request) {.gcsafe,async.} =
   ## Starts the slack app connection
   ## For documentation, see the nimble package 'slacklib'
   
@@ -407,6 +488,7 @@ include "tmpl/main.tmpl"
 
 routes:
   get "/":
+    #when declared(email):
     if vAlarmRinging:
       resp(genMain(genArmed(true, false, genDisarm())))
     if vAlarmTriggered:
@@ -469,8 +551,12 @@ routes:
 
 
   post "/disarmconfirm":
+    when declared(dev):
+      if @"password" == "123":
+        handler()
+        return
     if @"password" == "":
-      if cfgSlackOn:
+      when declared(slackOn):
         asyncCheck slackSend(slackMsg(slackChannel, slackName, "Alarm: Wrong password (empty)", "", "danger", "Alarm Update", "Wrong password (empty) entered at " & format(getLocalTime(getTime()), "dd MMMM yyyy - HH:mm")))
 
       discard tryInsertID(db, sqlInsert("history", ["type", "text", "date", "time"]), "password", "No password entered", currDate(), currTime())
@@ -481,7 +567,7 @@ routes:
         alarmDisarm(passwordCheck)
         resp("OK")
     
-    if cfgSlackOn:
+    when declared(slackOn):
       asyncCheck slackSend(slackMsg(slackChannel, slackName, "Alarm: Wrong password", "", "danger", "Alarm Update", "Wrong password entered at " & format(getLocalTime(getTime()), "dd MMMM yyyy - HH:mm")))
 
     discard tryInsertID(db, sqlInsert("history", ["type", "text", "date", "time"]), "password", "Wrong password", currDate(), currTime())
@@ -537,20 +623,20 @@ proc socketResponse(data: string) {.async.} =
   case split(data, ":")[0]
   of "DOOR":
     discard tryInsertID(db, sqlInsert("history", ["type", "text", "date", "time"]), "gpio", "Door is triggered", currDate(), currTime())
-    if cfgSlackOn:
+    when declared(slackOn):
       asyncCheck slackSend(msgTriggeredDoor)
     vAlarmTriggered = true
   of "SLAVE1Error":
     discard tryInsertID(db, sqlInsert("history", ["type", "text", "date", "time"]), "slave1", "Errors on SLAVE1", currDate(), currTime())
-    if cfgSlackOn:
+    when declared(slackOn):
       asyncCheck slackSend(msgSlave1Error)
   of "SLAVE1Quit":
     discard tryInsertID(db, sqlInsert("history", ["type", "text", "date", "time"]), "slave1", "SLAVE1 is quitting", currDate(), currTime())
-    if cfgSlackOn:
+    when declared(slackOn):
       asyncCheck slackSend(msgSlave1Quit)
   of "SLAVE1On":
     discard tryInsertID(db, sqlInsert("history", ["type", "text", "date", "time"]), "slave1", "SLAVE1 is on", currDate(), currTime())
-    if cfgSlackOn:
+    when declared(slackOn):
       asyncCheck slackSend(msgSlave1On)
   else:
     discard
@@ -573,16 +659,16 @@ proc processClient(client: AsyncSocket) {.async.} =
     
     elif line != "" and split(line, ":")[0] == "SLAVE1ON":
       discard tryInsertID(db, sqlInsert("history", ["type", "text", "date", "time"]), "slave1", "SLAVE1 is on", currDate(), currTime())
-      if cfgSlackOn:
+      when declared(slackOn):
         asyncCheck slackSend(msgSlave1On)
     
     elif line != "" and split(line, ":")[0] == "SLAVE1Quit":
       discard tryInsertID(db, sqlInsert("history", ["type", "text", "date", "time"]), "slave1", "SLAVE1 is quitting", currDate(), currTime())
-      if cfgSlackOn:
+      when declared(slackOn):
         asyncCheck slackSend(msgSlave1Quit)
     
     elif line != "" and split(line, ":")[0] == "MSG":
-      if cfgSlackOn:
+      when declared(slackOn):
         asyncCheck slackSend(slackMsg(slackChannel, slackName, split(line, ":")[1], "", "good", "Alarm MSG", split(line, ":")[1]))
 
     else:
@@ -615,7 +701,7 @@ proc serveSocket() {.async.} =
 ]#
 proc handler() {.noconv.} =
   echo "Program quitted."
-  if cfgSlackOn:
+  when declared(slackOn):
     asyncCheck slackSend(msgOff)
   discard tryInsertID(db, sqlInsert("history", ["type", "text", "date", "time"]), "program", "Controller is quitted", currDate(), currTime())
   terminateGPIO()
@@ -640,7 +726,8 @@ when isMainModule:
   if piSetup() < 0:
     echo "Problems with the RPi GPIO. Quitting."
     discard tryInsertID(db, sqlInsert("history", ["type", "text", "date", "time"]), "program", "Problems with the GPIO, quitting.", currDate(), currTime())
-    asyncCheck slackSend(slackMsg(slackChannel, slackName, "GPIO problem. Quitting.", "", "danger", "Alarm Update", "Problems with the GPIO. Quitting."))
+    when declared(email):
+      asyncCheck sendMailNow("ALARM NOT STARTET", "Alarm could not be started - " & currDate() & " " & currTime())
     quit 0
 
   # Enabling the GPIO pins
@@ -653,11 +740,23 @@ when isMainModule:
   # Start socket server
   asyncCheck serveSocket()
   
-  if cfgSlackOn:
-    # Start slack server
-    asyncCheck slackServer.serve(Port(slackPort), serverSlackRun)
+  #when declared(slackOn):
+  # Start slack server
+  asyncCheck slackServer.serve(slackPort, serverSlackRun)
+  #when declared(slackOn):
+  when declared(slackOn):
     # Send slack ON msg
     asyncCheck slackSend(msgOn)
+
+  
+  # Set system details
+  # Reset alarmstatus
+  var currentAlarmStatus = getValue(db, sqlSelect("system", ["alarmstatus"], [""], ["id ="], "", "", ""), 1)
+  if currentAlarmStatus == "":
+    discard tryInsertID(db, sqlInsert("system", ["alarmstatus"]), "Disarmed")
+    currentAlarmStatus = "Disarmed"
+  
+  setAlarmStatus(currentAlarmStatus)
 
   runForever()
   
