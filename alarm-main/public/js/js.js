@@ -3,8 +3,6 @@ console.log("Page load start");
 $(function() {
   console.log("Page load finish");
 
-  
-
   // Check if alarm is ringing
   if ($("#alarm-status").attr("data-triggered") == "true") {
     $(".alarm-ringing").text("ALARM TRIGGERED")
@@ -25,6 +23,7 @@ function alarmRingingWhite () {
       }
    }, 3000)
 }
+
 function alarmRingingRed () {
   setTimeout(function () {
     $(".alarm-ringing").css("color", "red");
@@ -34,9 +33,11 @@ function alarmRingingRed () {
     }
   }, 3000)
 }
+
+$(function() {
 // Password typing
   $(".codebtn").click(function() {
-    console.log("Password char typed")
+    //console.log("Password char typed")
     var char = $(this).attr("data-value");
     var currPwd = $("#disarm-password").val();
     $("#disarm-password").val(currPwd + char);
@@ -75,3 +76,4 @@ function alarmRingingRed () {
       $(".password-message").text("No input").fadeIn(300);
     }
   });
+});
