@@ -24,18 +24,24 @@
 <div class="panel panel-default" style="margin: 20px 20px;">
   <!-- Default panel contents -->
 
-  <a class="weatherwidget-io" href="https://forecast7.com/da/55d6812d57/copenhagen/" data-label_1="COPENHAGEN" data-label_2="WEATHER" data-theme="original" >COPENHAGEN WEATHER</a>
+  <div id="weathermain">
+    <a class="weatherwidget-io" href="https://forecast7.com/API" data-label_1="COPENHAGEN" data-label_2="WEATHER" data-theme="original" >COPENHAGEN WEATHER</a>
+    <div id="blockweather" style="position: absolute; width: 743px; height: 111px; top: 75px; background: rgba(128, 128, 128, 0);"></div>
+  </div>
+  
   <script>
   !function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src='https://weatherwidget.io/js/widget.min.js';fjs.parentNode.insertBefore(js,fjs);}}(document,'script','weatherwidget-io-js');
   </script>
 
   <div style="display: inline-flex;">
-    <div style="margin-rigth: 10px;">
-      <a class="twitter-timeline" data-lang="da" data-width="350" data-height="400" data-dnt="true" data-chrome="nofooter noheader" href="https://twitter.com/twitterlistapi">A Twitter List</a> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+    <div style="margin-right: 10px;" class="twitter-timeline-custom twitter-timeline-custom1 twitter-timeline-all">
+      <a class="twitter-timeline timeline1" data-lang="da" data-width="350" data-height="400" data-dnt="true" data-chrome="nofooter noheader" href="https://twitter.com/API">A Twitter List</a> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+      <div class="blocktwitter" style="position: absolute; width: 335px; height: 411px; top: 192px;"></div>
     </div>
   
-    <div>
-      <a class="twitter-timeline" data-lang="da" data-width="350" data-height="400" data-dnt="true" data-chrome="nofooter noheader" href="https://twitter.com/twitterlistapi">A Twitter List</a> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+    <div class="twitter-timeline-custom2 twitter-timeline-all">
+      <a class="twitter-timeline timeline2" data-lang="da" data-width="350" data-height="400" data-dnt="true" data-chrome="nofooter noheader" href="https://twitter.com/API">A Twitter List</a> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+      <div class="blocktwitter" style="position: absolute; width: 335px; height: 411px; top: 192px;"></div>
     </div>
   </div>
 
