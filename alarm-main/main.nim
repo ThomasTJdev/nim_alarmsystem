@@ -161,20 +161,17 @@ proc cameraStart() {.async.} =
   var counter = 1
   mainCameraFilename = $toInt(epochTime())
 
-  discard execProcess("avconv -t 10 -f video4linux2 -r 25 -s 640x320 -i /dev/video0 -f alsa -i plughw:CameraB409241,0 -ar 22050 -ab 64k -strict experimental -acodec aac -vcodec mpeg4 -y /home/pi/Documents/rpi/alarm-main/files/" & $counter & "_" & mainCameraFilename & ".mp4")
+  discard execProcess("/usr/bin/avconv -t 00:00:10 -timelimit 10 -f video4linux2 -r 25 -s 640x320 -i /dev/video0 -f alsa -i plughw:CameraB409241,0 -ar 22050 -ab 64k -strict experimental -acodec aac -vcodec mpeg4 -y /home/pi/Documents/rpi/alarm-main/files/" & $counter & "_" & mainCameraFilename & ".mp4", options = {poEvalCommand})
   
   await sleepAsync(10000)
 
   while mainCameraActive:
     inc(counter)
 
-    discard execProcess("avconv -t 60 -f video4linux2 -r 25 -s 640x320 -i /dev/video0 -f alsa -i plughw:CameraB409241,0 -ar 22050 -ab 64k -strict experimental -acodec aac -vcodec mpeg4 -y /home/pi/Documents/rpi/alarm-main/files/" & $counter & "_" & mainCameraFilename & ".mp4")
+    discard execProcess("/usr/bin/avconv -t 00:00:60 -timelimit 60 -f video4linux2 -r 25 -s 640x320 -i /dev/video0 -f alsa -i plughw:CameraB409241,0 -ar 22050 -ab 64k -strict experimental -acodec aac -vcodec mpeg4 -y /home/pi/Documents/rpi/alarm-main/files/" & $counter & "_" & mainCameraFilename & ".mp4", options = {poEvalCommand})
 
     await sleepAsync(60000)
 
-#proc cameraStop() =
-#  kill(mainCameraProcess)
-#  discard execCmd("pkill avconv")
 
 proc cameraStopDelete() =
   mainCameraActive = false
