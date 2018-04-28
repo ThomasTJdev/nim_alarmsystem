@@ -37,7 +37,7 @@ __________________________*/
   padding-top: 2px;
   font-family: 'Montserrat Subrayada', sans-serif;
   font-size: 16px;
-  margin-left: 5px;
+  margin-left: 0px;
   width: 90px;
   cursor: pointer;
 }
@@ -122,4 +122,66 @@ __________________________*/
 #cameraFrame body::-webkit-scrollbar-thumb {
   background-color: darkgrey;
   outline: 1px solid slategrey;
+}
+
+
+
+/*
+    RSS feed
+__________________________*/
+#rssmenu {
+  color: black;
+}
+description  {
+  display: table-cell;
+}
+.rsscard img {
+  width: 100%;
+}
+description,
+description p {
+  color: black;
+}
+.rssinner {
+  width: 33%;
+  display: table-cell;
+  padding: 5px;
+}
+.rsscard {
+  box-shadow: 0px 0px 9px 0px rgba(0,0,0,0.75);
+  padding: 3px;
+  max-height: 400px;
+  text-overflow: ellipsis;
+  word-wrap: break-word;
+  overflow: hidden;
+}
+.rssinner h2 {
+  display: none;
+}
+.rssinner a {
+  color:black
+}
+.rssinner a:hover {
+  color:black;
+  text-decoration: none;
+}
+.rssinner .header {
+  color: black;
+  font-weight: 700;
+  height: 60px;
+}
+guid,
+pubdate,
+pubDate,
+author,
+category {
+  display: none;
+}
+title,
+category,
+DR:PostingGuid,
+DR:ChannelName,
+DR:ChannelDisplayName
+{
+  display: none;
 }

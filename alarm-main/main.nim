@@ -11,7 +11,7 @@
 
 import
   os, strutils, times, jester, asyncdispatch, asyncnet, parsecfg, macros, osproc, db_sqlite, ressources.sqlQuery, ressources.newUser, json, httpclient, cgi, slacklib, wiringPiNim,
-  htmlparser, smtp
+  htmlparser, smtp, xmltree, xmlparser, parsexml, streams, re
 
 import bcrypt
 
@@ -41,6 +41,7 @@ let
 var
   mainCameraFilename = "none"
   mainCameraProcess: Process
+  mainCameraActive = false
 
 
 # Slave camera
@@ -156,19 +157,30 @@ proc alarmStatus(): string =
     result = "Disarmed"
 
 # Main camera
-proc cameraStart() =
+proc cameraStart() {.async.} =
+  var counter = 1
   mainCameraFilename = $toInt(epochTime())
-  mainCameraProcess = startProcess("/bin/sh", workingDir = "", ["ressources/startcamera.sh", mainCameraFilename & ".mp4"])
-  #discard execProcess("avconv -t 45 -f video4linux2 -r 25 -s 640x320 -i /dev/video0 -f alsa -i plughw:CameraB409241,0 -ar 22050 -ab 64k -strict experimental -acodec aac -vcodec mpeg4 -y " & appDir & "/files/" & mainCameraFilename & "_maincamera.mp4")
 
-proc cameraStop() =
-  kill(mainCameraProcess)
-  discard execCmd("pkill avconv")
+  discard execProcess("avconv -t 10 -f video4linux2 -r 25 -s 640x320 -i /dev/video0 -f alsa -i plughw:CameraB409241,0 -ar 22050 -ab 64k -strict experimental -acodec aac -vcodec mpeg4 -y /home/pi/Documents/rpi/alarm-main/files/" & $counter & "_" & mainCameraFilename & ".mp4")
+  
+  await sleepAsync(10000)
+
+  while mainCameraActive:
+    inc(counter)
+
+    discard execProcess("avconv -t 60 -f video4linux2 -r 25 -s 640x320 -i /dev/video0 -f alsa -i plughw:CameraB409241,0 -ar 22050 -ab 64k -strict experimental -acodec aac -vcodec mpeg4 -y /home/pi/Documents/rpi/alarm-main/files/" & $counter & "_" & mainCameraFilename & ".mp4")
+
+    await sleepAsync(60000)
+
+#proc cameraStop() =
+#  kill(mainCameraProcess)
+#  discard execCmd("pkill avconv")
 
 proc cameraStopDelete() =
-  kill(mainCameraProcess)
+  mainCameraActive = false
   discard execCmd("pkill avconv")
-  discard execCmd("rm " & appDir & "/files/" & mainCameraFilename & ".mp4")
+  #kill(mainCameraProcess)
+  discard execCmd("rm " & appDir & "/files/*_" & mainCameraFilename & ".mp4")
 
 # GPIO functions
 proc gpioSetup() =
@@ -266,7 +278,8 @@ proc alarmTriggered() {.async.} =
   if vAlarmArmed == true and vAlarmRinging == false and vAlarmPwdPeriod == false:
 
     # Start recording
-    cameraStart()
+    mainCameraActive = true
+    asyncCheck cameraStart()
 
     vAlarmRinging = false
     vAlarmTriggered = true
@@ -494,7 +507,16 @@ routes:
     if vAlarmTriggered:
       resp(genMain(genArmed(false, true, genDisarm())))
 
-    resp(genMain(genWelcome()))
+    resp(genMain(genNews(@"apifeed")))
+
+  get "/log":
+    #when declared(email):
+    if vAlarmRinging:
+      resp(genMain(genArmed(true, false, genDisarm())))
+    if vAlarmTriggered:
+      resp(genMain(genArmed(false, true, genDisarm())))
+
+    resp(genMain(genLog()))
 
 
   get "/arm":

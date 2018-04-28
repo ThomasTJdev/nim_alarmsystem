@@ -6,7 +6,8 @@
   <div class="container">
     <p class="navbar-text" style="font-size: 110%;"><b>${alarmStatus()}</b></p>
     <span style="text-align: center; float: right;">
-      <a class="navbar-text navbar-navigation" href="/">Log</a>
+      <a class="navbar-text navbar-navigation" href="/">News</a>
+      <a class="navbar-text navbar-navigation" href="/log">Log</a>
       <a class="navbar-text navbar-navigation" href="/arm">Arm</a>
       <a class="navbar-text navbar-navigation" href="/disarmManual">Disarm</a>
       <a class="navbar-text navbar-navigation" href="/camera">Camera</a>
@@ -18,32 +19,113 @@
 #end proc
 #
 #
-#proc genWelcome(): string = 
+#proc genNews(rssapi = ""): string = 
 # result = "" 
 
 <div class="panel panel-default" style="margin: 20px 20px;">
   <!-- Default panel contents -->
 
   <div id="weathermain">
-    <a class="weatherwidget-io" href="https://forecast7.com/API" data-label_1="COPENHAGEN" data-label_2="WEATHER" data-theme="original" >COPENHAGEN WEATHER</a>
-    <div id="blockweather" style="position: absolute; width: 743px; height: 111px; top: 75px; background: rgba(128, 128, 128, 0);"></div>
+    <a class="weatherwidget-io" href="https://forecast7.com/da/55d6812d57/copenhagen/" data-label_1="COPENHAGEN" data-label_2="WEATHER" data-theme="original" >COPENHAGEN WEATHER</a>
+    <div id="blockweather" style="position: absolute; width: 743px; height: 121px; top: 75px; background: rgba(128, 128, 128, 0);"></div>
   </div>
   
   <script>
   !function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src='https://weatherwidget.io/js/widget.min.js';fjs.parentNode.insertBefore(js,fjs);}}(document,'script','weatherwidget-io-js');
   </script>
 
-  <div style="display: inline-flex;">
+  <!--<div style="display: inline-flex;">
     <div style="margin-right: 10px;" class="twitter-timeline-custom twitter-timeline-custom1 twitter-timeline-all">
-      <a class="twitter-timeline timeline1" data-lang="da" data-width="350" data-height="400" data-dnt="true" data-chrome="nofooter noheader" href="https://twitter.com/API">A Twitter List</a> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+      <a class="twitter-timeline timeline1" data-lang="da" data-width="350" data-height="400" data-dnt="true" data-chrome="nofooter noheader" href="https://twitter.com/listAPI">A Twitter List</a> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
       <div class="blocktwitter" style="position: absolute; width: 335px; height: 411px; top: 192px;"></div>
     </div>
   
     <div class="twitter-timeline-custom2 twitter-timeline-all">
-      <a class="twitter-timeline timeline2" data-lang="da" data-width="350" data-height="400" data-dnt="true" data-chrome="nofooter noheader" href="https://twitter.com/API">A Twitter List</a> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+      <a class="twitter-timeline timeline2" data-lang="da" data-width="350" data-height="400" data-dnt="true" data-chrome="nofooter noheader" href="https://twitter.com/listAPI">A Twitter List</a> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
       <div class="blocktwitter" style="position: absolute; width: 335px; height: 411px; top: 192px;"></div>
     </div>
+  </div>-->
+
+  <div id="rssmenu">
+    <b>RSS feeds:</b>
+    <a href="/?apifeed=http://feeds.tv2.dk/nyheder/rss">TV2</a>
+    <a href="/?apifeed=https://www.dr.dk/nyheder/service/feeds/allenyheder.rss">DR</a>
+    <a href="/?apifeed=https://ekstrabladet.dk/rssfeed/all/">EB</a>
+    <a href="/?apifeed=https://ekstrabladet.dk/rssfeed/112/">EB112</a>
+    <a href="/?apifeed=http://borsen.dk/rss/">Børsen</a>
   </div>
+  
+  <div id="rsscontainer">
+# let rssfeed = if rssapi == "": "http://feeds.tv2.dk/nyheder/rss" else: rssapi
+#
+# var xml : XmlNode = parseXML(newStringStream(getContent(rssfeed))).child("channel")
+#
+# var counter = 1
+#
+# for itemsXML in xml.findAll("item"):
+#
+#   var title = ""
+#   var rawdesp = ""
+#
+#   case rssfeed
+#   of "http://feeds.tv2.dk/nyheder/rss", "http://borsen.dk/rss/":
+#     title = ($itemsXML.child("title")).substr(16, ($itemsXML.child("title")).len() - 12) 
+#     rawdesp = ($itemsXML).multiReplace([("<description><![CDATA[", "<description>"), ("]]></description>", "</description>")])
+#
+#   of "https://ekstrabladet.dk/rssfeed/112/", "https://ekstrabladet.dk/rssfeed/all/":
+#     title = ($itemsXML.child("title")).substr(7, ($itemsXML.child("title")).len() - 9)
+#     rawdesp = ($itemsXML).multiReplace([("media:thumbnail url", "img src"), ("&lt;", "<"), ("&gt;", ">"), ("&#x2F;", "/")])
+#
+#   of "https://www.dr.dk/nyheder/service/feeds/allenyheder.rss":
+#     title = ($itemsXML.child("title")).substr(16, ($itemsXML.child("title")).len() - 12) 
+#     rawdesp = ($itemsXML).replace(re"<DR.*mu.*>.*>", "")
+#     rawdesp = rawdesp.multiReplace([("<description><![CDATA[", "<description>"), ("]]></description>", "</description>"), ("<DR:ImageUri620x349><![CDATA[", "<img src='"), ("""]]></DR:ImageUri620x349>""", """'\>""")])
+#
+#   end case
+#
+#
+#   if title.len() == 0:
+#     continue
+#   end if
+#
+#   if counter == 1:
+      <div class="rss">
+#   end if
+
+    <div class="rssinner">
+      <div class="rsscard">
+        <p class="header">$title</p>
+        
+        # var desp = replace(rawdesp, re"""href=.*\"""", "")
+        # desp = replace(rawdesp, re"""<link>.*\</link>""", "")
+        
+        $desp
+
+      </div>
+    </div>
+
+#   if counter == 3:
+#     counter = 1
+      </div>
+#   else:
+#     inc(counter)
+#   end if
+#
+#
+# end for
+  </div>
+</div>
+#end proc
+#
+#
+#
+#
+#
+#proc genLog(): string = 
+# result = "" 
+
+<div class="panel panel-default" style="margin: 20px 20px;">
+  <!-- Default panel contents -->
 
   <div class="panel-heading">Latest activity</div>
 
