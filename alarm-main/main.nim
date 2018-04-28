@@ -158,26 +158,41 @@ proc alarmStatus(): string =
 
 # Main camera
 proc cameraStart() {.async.} =
+  when defined(dev):
+    echo "cameraStart() - startet"
+  
   var counter = 1
   mainCameraFilename = $toInt(epochTime())
 
-  discard execProcess("/usr/bin/avconv -t 00:00:10 -timelimit 10 -f video4linux2 -r 25 -s 640x320 -i /dev/video0 -f alsa -i plughw:CameraB409241,0 -ar 22050 -ab 64k -strict experimental -acodec aac -vcodec mpeg4 -y /home/pi/Documents/rpi/alarm-main/files/" & $counter & "_" & mainCameraFilename & ".mp4", options = {poEvalCommand})
+  mainCameraProcess = startProcess("/usr/bin/avconv -t 00:00:10 -timelimit 10 -f video4linux2 -r 25 -s 640x320 -i /dev/video0 -f alsa -i plughw:CameraB409241,0 -ar 22050 -ab 64k -strict experimental -acodec aac -vcodec mpeg4 -y /home/pi/Documents/rpi/alarm-main/files/" & mainCameraFilename & "_" & $counter & ".mp4", options = {poEvalCommand})
+
+  when defined(dev):
+    echo "cameraStart() - starting recording: 1"
   
   await sleepAsync(10000)
+
+  while running(mainCameraProcess):
+    await sleepAsync(1000)
 
   while mainCameraActive:
     inc(counter)
 
-    discard execProcess("/usr/bin/avconv -t 00:00:60 -timelimit 60 -f video4linux2 -r 25 -s 640x320 -i /dev/video0 -f alsa -i plughw:CameraB409241,0 -ar 22050 -ab 64k -strict experimental -acodec aac -vcodec mpeg4 -y /home/pi/Documents/rpi/alarm-main/files/" & $counter & "_" & mainCameraFilename & ".mp4", options = {poEvalCommand})
+    when defined(dev):
+      echo "cameraStart() - starting recording: " & $counter
+
+    mainCameraProcess = startProcess("/usr/bin/avconv -t 00:00:60 -timelimit 60 -f video4linux2 -r 25 -s 640x320 -i /dev/video0 -f alsa -i plughw:CameraB409241,0 -ar 22050 -ab 64k -strict experimental -acodec aac -vcodec mpeg4 -y /home/pi/Documents/rpi/alarm-main/files/" & mainCameraFilename & "_" & $counter & ".mp4", options = {poEvalCommand})
 
     await sleepAsync(60000)
+
+    while running(mainCameraProcess):
+      await sleepAsync(1000)
 
 
 proc cameraStopDelete() =
   mainCameraActive = false
   discard execCmd("pkill avconv")
-  #kill(mainCameraProcess)
-  discard execCmd("rm " & appDir & "/files/*_" & mainCameraFilename & ".mp4")
+  if running(mainCameraProcess): kill(mainCameraProcess)
+  discard execCmd("rm " & appDir & "/files/" & mainCameraFilename & "_*.mp4")
 
 # GPIO functions
 proc gpioSetup() =
@@ -188,13 +203,27 @@ proc gpioSetup() =
   piPinModeInput(gpioPIR)
   
 proc gpioBuzzerBlink() {.async.} =
-  while bBuzzerBlink:
+  when not defined(dev):
+    while bBuzzerBlink:
+      piDigitalWrite(gpioBuzzer, gpioOn)
+      await sleepAsync(200)
+      piDigitalWrite(gpioBuzzer, gpioOff)
+      await sleepAsync(300)
+
+  when defined(dev):
+    echo "gpioBuzzerBlink() - startet"
     piDigitalWrite(gpioBuzzer, gpioOn)
-    await sleepAsync(300)
+    await sleepAsync(200)
     piDigitalWrite(gpioBuzzer, gpioOff)
-    await sleepAsync(800)
+    await sleepAsync(200)
+    piDigitalWrite(gpioBuzzer, gpioOn)
+    await sleepAsync(200)
+    piDigitalWrite(gpioBuzzer, gpioOff)
 
 proc gpioLedBlink(pin: cint) {.async.} =
+  when defined(dev):
+    echo "gpioLedBlink() - startet"
+
   while bLedBlink:
     piDigitalWrite(pin, gpioOn)
     await sleepAsync(300)
@@ -243,6 +272,9 @@ proc alarmRinging() {.async.} =
   ## Activated the ringing when the alarm has been triggered,
   ## and no correct password has been entered
 
+  when defined(dev):
+    echo "alarmRinging() - alarm is ringing"
+
   # Empty out camera file so file not getting deleted
   mainCameraFilename = "none"
 
@@ -273,6 +305,9 @@ proc alarmTriggered() {.async.} =
   ## is provided, alarmRinging() will be called.
 
   if vAlarmArmed == true and vAlarmRinging == false and vAlarmPwdPeriod == false:
+    
+    when defined(dev):
+      echo "alarmTriggered() - activated"
 
     # Start recording
     mainCameraActive = true
@@ -306,6 +341,9 @@ proc alarmTriggered() {.async.} =
 proc alarmDisarm(userID: string) =
   ## When correct password is provided, alarmDisarm() is called.
 
+  when defined(dev):
+    echo "alarmDisarm() - activated"
+
   vAlarmRinging = false
   vAlarmTriggered = false
   vAlarmArmed = false
@@ -333,6 +371,10 @@ proc alarmArmed() {.async.} =
   ## When the alarm system is armed, alarmArmed() starts the monitoring.
 
   if vAlarmRinging == false and vAlarmTriggered == false:
+    
+    when defined(dev):
+      echo "alarmArmed() - activated"
+
     terminateGPIO()
 
     bBuzzerBlink = true
@@ -368,6 +410,10 @@ proc alarmArmed() {.async.} =
 
       while vAlarmTriggered == false:
         await sleepAsync(300)
+
+      when defined(dev):
+        echo "alarmArmed() - alarm has been triggered"
+
       asyncCheck alarmTriggered()
 
 
@@ -776,6 +822,12 @@ when isMainModule:
     currentAlarmStatus = "Disarmed"
   
   setAlarmStatus(currentAlarmStatus)
+
+  when defined(dev) and defined(alarmTriggered):
+    vAlarmArmed = true 
+    vAlarmRinging = false 
+    vAlarmPwdPeriod = false
+    asyncCheck alarmTriggered() 
 
   runForever()
   
